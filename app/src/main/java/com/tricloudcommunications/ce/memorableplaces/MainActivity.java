@@ -48,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
 
                 Intent i = new Intent(getApplicationContext(), MapsActivity.class);
                 i.putExtra("LocationInfo", position);
+                startActivity(i);
 
                 Log.i("List Item Selceted: ", locationList.get(position));
 
