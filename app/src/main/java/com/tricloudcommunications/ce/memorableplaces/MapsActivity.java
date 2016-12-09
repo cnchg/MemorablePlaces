@@ -1,6 +1,7 @@
 package com.tricloudcommunications.ce.memorableplaces;
 
 import android.app.ActionBar;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -29,12 +30,15 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.io.IOException;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
 public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleMap.OnMapLongClickListener, LocationListener {
 
     private GoogleMap mMap;
+
+    int selectedLocation = -1;
 
     LocationManager locationManager;
     String provider;
@@ -49,14 +53,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
-        //ActionBar actionBar = getActionBar();
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         Intent i = getIntent();
-        int recievedData = i.getIntExtra("LocationInfo", -1);
-        Log.i("LocationInfo", Integer.toString(recievedData));
+        selectedLocation = i.getIntExtra("LocationInfo", -1);
+        Log.i("LocationInfo", Integer.toString(selectedLocation));
 
-        locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         provider = locationManager.getBestProvider(new Criteria(), false);
 
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -72,12 +75,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         location = locationManager.getLastKnownLocation(provider);
 
         try {
-            if (location != null){
+            if (location != null) {
 
                 onLocationChanged(location);
 
             }
-        }catch (Exception e){
+        } catch (Exception e) {
 
             e.printStackTrace();
             Toast.makeText(getApplicationContext(), "Getting your location... Please Wait", Toast.LENGTH_LONG).show();
@@ -90,7 +93,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case android.R.id.home:
-                // app icon in action bar clicked; goto parent activity.
+
+                // When app icon in action bar clicked; goto parent activity.
                 this.finish();
                 return true;
             default:
@@ -113,7 +117,49 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         mMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
         mMap.setOnMapLongClickListener(this);
 
-        onLocationChanged(location);
+
+        /** use this code if you are NOT making the first item in the List View to add a new location */
+        if (selectedLocation != -1) {
+
+            //Stop Location Updates
+            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                // TODO: Consider calling
+                //    ActivityCompat#requestPermissions
+                // here to request the missing permissions, and then overriding
+                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                //                                          int[] grantResults)
+                // to handle the case where the user grants the permission. See the documentation
+                // for ActivityCompat#requestPermissions for more details.
+                return;
+            }
+            locationManager.removeUpdates(this);
+
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(MainActivity.locationCoords.get(selectedLocation), 20));
+            mMap.addMarker(new MarkerOptions().position(MainActivity.locationCoords.get(selectedLocation)).title(MainActivity.locationList.get(selectedLocation)).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW)));
+            mMap.addCircle(new CircleOptions().center(MainActivity.locationCoords.get(selectedLocation)).radius(3).strokeColor(Color.RED).fillColor(Color.BLUE));
+        } else {
+
+            locationManager.requestLocationUpdates(provider, 400, 1, this);
+            onLocationChanged(location);
+
+            //mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location.getLatitude(),location.getLongitude()), 18));
+            //mMap.addMarker(new MarkerOptions().position(new LatLng(location.getLatitude(),location.getLongitude())).title("You Are Here").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW)));
+            //mMap.addCircle(new CircleOptions().center(new LatLng(location.getLatitude(),location.getLongitude())).radius(10).strokeColor(Color.RED).fillColor(Color.BLUE));
+
+         }
+
+        /** use this code if you are making the firt item in the List View to add a new location
+         * Also in MainActivity.java you need to uncommnent //locationList.add("Go Ahead! Add a new place");
+         * Also in MainActivity.java you need to uncomment //locationCoords.add(new LatLng(0,0));
+
+         if (selectedLocation != -1 && selectedLocation != 0) {
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(MainActivity.locationCoords.get(selectedLocation), 20));
+            mMap.addMarker(new MarkerOptions().position(MainActivity.locationCoords.get(selectedLocation)).title(MainActivity.locationList.get(selectedLocation)));
+        }else{
+
+            onLocationChanged(location);
+         }
+       */
 
         // Add a marker in Sydney, Australia, and move the camera.
         //LatLng sydney = new LatLng(-34, 151);
@@ -125,24 +171,42 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapLongClick(LatLng latLng) {
 
+        Geocoder geocoder = new Geocoder(getApplicationContext(), Locale.getDefault());
+
+        String label = new Date().toString();
+
+        try {
+            List<Address> listAddress = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1);
+
+            if (listAddress != null && listAddress.size() > 0){
+
+                label = listAddress.get(0).getAddressLine(0) + " " + listAddress.get(0).getAddressLine(1) + " " + listAddress.get(0).getAddressLine(2);
+
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        MainActivity.locationList.add(label);
+        MainActivity.arrayAdapter.notifyDataSetChanged();
+        Log.i("Address List", "The Address List Has Been Updated.");
+        MainActivity.locationCoords.add(latLng);
+
 
         mMap.addMarker(new MarkerOptions()
                 .position(latLng)
-                .title("You are here")
+                .title(label)
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
+
 
     }
 
     @Override
-    public void onLocationChanged(Location location) {
+    public void onLocationChanged(Location userLocation) {
 
-        Double lat = location.getLatitude();
-        Double lng = location.getLongitude();
-
-        mMap.clear();
-        mMap.addMarker(new MarkerOptions().position(new LatLng(lat,lng)).title("You Are Here").icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW)));
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lat,lng), 18));
-        mMap.addCircle(new CircleOptions().center(new LatLng(lat,lng)).radius(10).strokeColor(Color.RED).fillColor(Color.BLUE));
+        Double lat = userLocation.getLatitude();
+        Double lng = userLocation.getLongitude();
 
         Geocoder geocoder = new Geocoder(getApplicationContext(), Locale.getDefault());
 
@@ -152,7 +216,15 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             if (addressList !=null && addressList.size() > 0){
 
-                Log.i("Address Info", addressList.get(0).toString());
+                mMap.clear();
+                mMap.addMarker(new MarkerOptions().position(new LatLng(lat,lng)).title(addressList.get(0).getAddressLine(0)).icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW)));
+                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lat,lng), 18));
+                mMap.addCircle(new CircleOptions().center(new LatLng(lat,lng)).radius(10).strokeColor(Color.RED).fillColor(Color.BLUE));
+
+                Log.i("Address Info 0", addressList.get(0).getAddressLine(0));
+                Log.i("Address Info 1", addressList.get(0).getAddressLine(1));
+                Log.i("Address Info 2", addressList.get(0).getAddressLine(2));
+
             }
 
         } catch (IOException e) {
@@ -163,7 +235,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         Log.i("Latitude", lat.toString());
         Log.i("Longitude", lng.toString());
-
 
     }
 

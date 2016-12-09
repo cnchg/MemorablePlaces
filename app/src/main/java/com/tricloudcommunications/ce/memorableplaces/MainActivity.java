@@ -11,11 +11,19 @@ import android.view.MenuItem;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+
+import com.google.android.gms.maps.model.LatLng;
+
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
 
+    static ArrayList<String> locationList;
+    static ArrayAdapter<String> arrayAdapter;
+    static ArrayList<LatLng> locationCoords;
+
     ListView myListView;
+
 
     public void addNewPlace(View view){
 
@@ -36,10 +44,13 @@ public class MainActivity extends AppCompatActivity {
 
         myListView = (ListView) findViewById(R.id.placesListView);
 
-        final ArrayList<String> locationList = new ArrayList<String>();
-        locationList.add("109 Thunderbird");
+        locationList = new ArrayList<String>();
+        //locationList.add("Go Ahead! Add a new place");
 
-        ArrayAdapter<String> arrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, locationList);
+        locationCoords = new ArrayList<LatLng>();
+        //locationCoords.add(new LatLng(0,0));
+
+        arrayAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, locationList);
         myListView.setAdapter(arrayAdapter);
 
         myListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
